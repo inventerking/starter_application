@@ -126,3 +126,20 @@ def login(client, user, password=PASSWORD) -> dict:
 
 def auth_headers(client, user, password=PASSWORD) -> dict:
     return {"Authorization": f"Bearer {login(client, user, password).json()['access_token']}"}
+
+
+def totp_code(secret: str, offset_steps: int = 0) -> str:
+    import time
+
+    import pyotp
+
+    return pyotp.TOTP(secret).at(int(time.time()) + offset_steps * 30)
+
+
+def enroll_mfa(client, headers, password=PASSWORD) -> tuple[str, list[str]]:
+    """Run setup and confirmation. Returns the secret and the recovery codes."""
+    secret = client.post("/api/v1/auth/mfa/setup", headers=headers,
+                         json={"password": password}).json()["secret"]
+    body = client.post("/api/v1/auth/mfa/confirm", headers=headers,
+                       json={"code": totp_code(secret)}).json()
+    return secret, body["recovery_codes"]
