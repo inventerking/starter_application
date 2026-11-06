@@ -168,3 +168,52 @@ def grant(db, permissions):
         db.commit()
 
     return _grant
+
+
+@pytest.fixture
+def client_permissions(db):
+    """Stand-in definitions for the Client registry. Admin tests never import Client code."""
+    from app.modules.client_domain.models import ClientPermission
+
+    rows = {}
+    for code in ("profile.view", "profile.update"):
+        resource, action = code.split(".")
+        row = ClientPermission(resource=resource, action=action, code=code, description=code)
+        db.add(row)
+        rows[code] = row
+    db.commit()
+    return rows
+
+
+@pytest.fixture
+def make_client_role(db):
+    from app.modules.client_domain.models import ClientRole
+
+    counter = iter(range(1, 1000))
+
+    def _make(**overrides):
+        role = ClientRole(**({"name": f"Client Role {next(counter)}"} | overrides))
+        db.add(role)
+        db.commit()
+        return role
+
+    return _make
+
+
+@pytest.fixture
+def make_client_user(db):
+    from app.core.security import get_password_service
+    from app.modules.client_domain.models import ClientUser
+
+    counter = iter(range(1, 10_000))
+
+    def _make(**overrides):
+        number = next(counter)
+        user = ClientUser(**({
+            "email": f"user{number}@example.com", "username": f"user{number}",
+            "password_hash": get_password_service().hash(PASSWORD)} | overrides))
+        db.add(user)
+        db.commit()
+        return user
+
+    return _make
