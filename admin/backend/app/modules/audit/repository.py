@@ -15,7 +15,7 @@ class AuditRepository:
     def add(self, entry: AuditLog) -> None:
         self._db.add(entry)
 
-    def list(
+    def list_page(
         self,
         *,
         page: int,

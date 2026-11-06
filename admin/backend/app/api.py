@@ -3,6 +3,8 @@
 from fastapi import APIRouter
 
 from app.core.health import router as health_router
+from app.modules.admins.routes import router as admins_router
+from app.modules.audit.routes import router as audit_router
 from app.modules.authentication.routes import router as authentication_router
 from app.modules.mfa.routes import router as mfa_router
 from app.modules.permissions.routes import router as permissions_router
@@ -14,3 +16,5 @@ api_router.include_router(authentication_router)
 api_router.include_router(mfa_router)
 api_router.include_router(permissions_router)
 api_router.include_router(roles_router)
+api_router.include_router(admins_router)
+api_router.include_router(audit_router)

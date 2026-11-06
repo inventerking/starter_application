@@ -49,7 +49,9 @@ class AdminRepository:
         self._db.flush()
         return user
 
-    def list(self, *, page: int, page_size: int, search: str | None) -> tuple[list[AdminUser], int]:
+    def list_page(
+        self, *, page: int, page_size: int, search: str | None
+    ) -> tuple[list[AdminUser], int]:
         query = select(AdminUser).where(AdminUser.deleted_at.is_(None))
         if search:
             pattern = like_pattern(search)
@@ -71,3 +73,7 @@ class AdminRepository:
         if excluding:
             query = query.where(AdminUser.id != excluding)
         return self._db.scalar(query) or 0
+
+    def lock_superusers(self) -> None:
+        self._db.execute(
+            select(AdminUser.id).where(AdminUser.is_superuser.is_(True)).with_for_update())
