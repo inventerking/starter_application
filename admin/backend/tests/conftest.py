@@ -73,3 +73,56 @@ def _clean_tables():
             if names:
                 joined = ", ".join(f'"{schema}"."{name}"' for name in names)
                 connection.execute(text(f"TRUNCATE {joined} CASCADE"))
+
+
+ORIGIN_HEADERS = {"Origin": "http://localhost:5173", "X-Requested-With": "starter-app"}
+PASSWORD = "correct-horse-battery-staple"
+
+
+@pytest.fixture
+def client():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with TestClient(app, headers=ORIGIN_HEADERS) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def db():
+    from app.core.database import SessionLocal
+
+    with SessionLocal() as session:
+        yield session
+
+
+@pytest.fixture
+def make_admin(db):
+    from app.core.security import get_password_service
+    from app.modules.admins.models import AdminUser
+
+    counter = iter(range(1, 10_000))
+
+    def _make(**overrides) -> AdminUser:
+        number = next(counter)
+        values = {
+            "email": f"admin{number}@example.com",
+            "username": f"admin{number}",
+            "password_hash": get_password_service().hash(overrides.pop("password", PASSWORD)),
+        }
+        user = AdminUser(**(values | overrides))
+        db.add(user)
+        db.commit()
+        return user
+
+    return _make
+
+
+def login(client, user, password=PASSWORD) -> dict:
+    return client.post("/api/v1/auth/login",
+                       json={"identifier": user.email, "password": password})
+
+
+def auth_headers(client, user, password=PASSWORD) -> dict:
+    return {"Authorization": f"Bearer {login(client, user, password).json()['access_token']}"}
