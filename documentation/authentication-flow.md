@@ -58,6 +58,14 @@ change and MFA enrollment. `get_current_principal` is the default for everything
   is off by default.
 - **Administrator reset:** issues a one-time temporary password and sets `must_change_password`.
 
+## Client registration
+
+`POST /api/v1/auth/register` refuses with `403 registration_disabled` until the Client backend sets
+`REGISTRATION_ENABLED=true`. `VITE_REGISTRATION_ENABLED` only controls whether the frontend shows the
+page. New accounts get the Client roles marked `is_default`. Decide your policy (for example, email
+verification) before turning this on. A duplicate email returns `409`, which reveals that the address
+is registered.
+
 ## First Super Admin
 
 ```bash
