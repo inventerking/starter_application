@@ -80,6 +80,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('must_change_password', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.Column('mfa_enabled', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+    sa.Column('mfa_enrollment_required', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.Column('mfa_secret_encrypted', sa.Text(), nullable=True),
     sa.Column('mfa_key_id', sa.String(length=32), nullable=True),
     sa.Column('mfa_confirmed_at', sa.DateTime(timezone=True), nullable=True),

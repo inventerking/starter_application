@@ -52,3 +52,24 @@ def _test_schemas():
             connection.execute(text(f'DROP SCHEMA IF EXISTS "{SCHEMA}" CASCADE'))
             connection.execute(text(f'DROP SCHEMA IF EXISTS "{client_schema}" CASCADE'))
         engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _clean_tables():
+    """Every test starts from empty domain tables."""
+    yield
+    from sqlalchemy import text
+
+    from app.core.config import get_settings
+    from app.core.database import SCHEMA, engine
+
+    for schema, keep in ((SCHEMA, "alembic_version"),
+                         (get_settings().client_database_schema, "alembic_version")):
+        with engine.begin() as connection:
+            names = connection.execute(
+                text("SELECT tablename FROM pg_tables WHERE schemaname = :s AND tablename <> :k"),
+                {"s": schema, "k": keep},
+            ).scalars().all()
+            if names:
+                joined = ", ".join(f'"{schema}"."{name}"' for name in names)
+                connection.execute(text(f"TRUNCATE {joined} CASCADE"))

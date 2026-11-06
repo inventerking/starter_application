@@ -29,6 +29,9 @@ class AdminUser(Base):
     must_change_password: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false"))
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # Set by an MFA reset: forces re-enrollment even when MFA is not globally mandatory.
+    mfa_enrollment_required: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"))
     mfa_secret_encrypted: Mapped[str | None] = mapped_column(Text)
     mfa_key_id: Mapped[str | None] = mapped_column(String(32))
     mfa_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
