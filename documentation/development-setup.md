@@ -11,6 +11,7 @@
 ```bash
 cp .env.example .env     # then set DATABASE_PASSWORD and MFA_ENCRYPTION_KEY
 uv sync
+uv run alembic upgrade head
 ```
 
 Generate an MFA key, using **a different key for each backend**:

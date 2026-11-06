@@ -16,3 +16,39 @@ os.environ["ARGON2_TIME_COST"] = "1"
 os.environ["ARGON2_MEMORY_COST_KIB"] = "64"
 os.environ["ARGON2_PARALLELISM"] = "1"
 os.environ["LOG_LEVEL"] = "WARNING"
+
+import subprocess  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import pytest  # noqa: E402
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+CLIENT_BACKEND_DIR = BACKEND_DIR.parents[1] / "client" / "backend"
+
+
+def run_alembic(cwd: Path, schema: str, *args: str) -> None:
+    """Run a backend's own Alembic environment in its own uv environment."""
+    env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+    env["DATABASE_SCHEMA"] = schema
+    subprocess.run(["uv", "run", "-q", "alembic", *args], cwd=cwd, env=env, check=True,
+                   capture_output=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _test_schemas():
+    from sqlalchemy import text
+
+    from app.core.config import get_settings
+    from app.core.database import SCHEMA, engine
+
+    client_schema = get_settings().client_database_schema
+    try:
+        run_alembic(BACKEND_DIR, SCHEMA, "upgrade", "head")
+        run_alembic(CLIENT_BACKEND_DIR, client_schema, "upgrade", "head")
+        yield
+    finally:
+        engine.dispose()
+        with engine.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA IF EXISTS "{SCHEMA}" CASCADE'))
+            connection.execute(text(f'DROP SCHEMA IF EXISTS "{client_schema}" CASCADE'))
+        engine.dispose()
