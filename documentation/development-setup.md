@@ -29,6 +29,23 @@ uv run uvicorn app.main:app --reload --port 8000
 uv run uvicorn app.main:app --reload --port 8001
 ```
 
+## First Super Admin (Admin backend)
+
+```bash
+uv run python -m app.cli.sync_permissions     # after every deployment, in both backends
+uv run python -m app.cli.create_superadmin    # prompts for email, username and password
+```
+
+## Frontends (repeat in `admin/frontend` and `client/frontend`)
+
+```bash
+cp .env.example .env
+npm install
+npm run dev      # Admin on 5173, Client on 5174
+npm run build    # type-checks and builds
+npm run lint
+```
+
 ## Tests and lint
 
 ```bash
