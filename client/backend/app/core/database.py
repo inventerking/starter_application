@@ -25,7 +25,8 @@ class Base(DeclarativeBase):
     metadata = MetaData(schema=SCHEMA, naming_convention=NAMING_CONVENTION)
 
 
-engine = create_engine(_settings.database_url, pool_pre_ping=True, future=True)
+# hide_parameters keeps bound values (hashes, tokens) out of error messages and tracebacks.
+engine = create_engine(_settings.database_url, pool_pre_ping=True, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

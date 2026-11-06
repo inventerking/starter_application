@@ -12,6 +12,7 @@
 cp .env.example .env     # then set DATABASE_PASSWORD and MFA_ENCRYPTION_KEY
 uv sync
 uv run alembic upgrade head
+uv run python -m app.cli.sync_permissions
 ```
 
 Generate an MFA key, using **a different key for each backend**:
@@ -32,7 +33,6 @@ uv run uvicorn app.main:app --reload --port 8001
 ## First Super Admin (Admin backend)
 
 ```bash
-uv run python -m app.cli.sync_permissions     # after every deployment, in both backends
 uv run python -m app.cli.create_superadmin    # prompts for email, username and password
 ```
 
@@ -55,3 +55,17 @@ uv run ruff check .
 
 Tests need the PostgreSQL server. They create uniquely named `test_*` schemas inside `starter_app`
 and drop them afterwards, so they never touch `admin` or `client` data.
+
+## Operations
+
+| Command (run in the backend's folder) | Purpose |
+|---|---|
+| `uv run python -m app.cli.sync_permissions` | Sync the permission registry. Run after every deployment. |
+| `uv run python -m app.cli.cleanup_expired` | Delete expired authentication records. Schedule daily. |
+| `uv run python -m app.cli.rotate_mfa_key` | Re-encrypt MFA secrets after changing the key |
+| `uv run python -m app.cli.create_superadmin` | Admin only: create a Super Admin |
+| `uv run python -m app.cli.set_superadmin` | Admin only: grant or revoke Super Admin status |
+| `uv run python -m app.cli.recover_admin` | Admin only: break-glass MFA or password recovery |
+
+Set `COOKIE_SECURE=false` only for `http://localhost`. Browsers reject secure cookies over plain HTTP,
+and sign-in appears to work until the first refresh.
