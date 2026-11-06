@@ -1,5 +1,6 @@
 """Authentication dependencies. Every token is checked against the database on every request."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -8,7 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db, utcnow
-from app.core.exceptions import AuthenticationRequired
+from app.core.exceptions import AuthenticationRequired, PermissionDenied
 from app.core.request_context import RequestContext, get_request_context
 from app.core.security import hash_token
 from app.modules.admins.models import AdminUser
@@ -17,6 +18,8 @@ from app.modules.authentication.exceptions import MfaEnrollmentRequired, Passwor
 from app.modules.authentication.models import SCOPE_FULL, UserSession
 from app.modules.authentication.repository import SessionRepository
 from app.modules.authentication.service import AuthenticationService, mfa_enrollment_needed
+from app.modules.permissions.registry import PermissionDefinition
+from app.modules.permissions.service import PermissionService
 
 _bearer = HTTPBearer(auto_error=False)
 _LAST_SEEN_RESOLUTION = timedelta(minutes=1)
@@ -75,3 +78,18 @@ def get_authentication_service(
     db: Session = Depends(get_db), context: RequestContext = Depends(get_request_context)
 ) -> AuthenticationService:
     return AuthenticationService(db, context)
+
+
+def require_permission(permission: PermissionDefinition) -> Callable[..., Principal]:
+    """Route guard. It accepts only registered definitions, never free-form strings."""
+    if not isinstance(permission, PermissionDefinition):
+        raise TypeError("require_permission needs a PermissionDefinition")
+
+    def _guard(
+        principal: Principal = Depends(get_current_principal), db: Session = Depends(get_db)
+    ) -> Principal:
+        if not PermissionService(db).has(principal.user, permission):
+            raise PermissionDenied
+        return principal
+
+    return _guard

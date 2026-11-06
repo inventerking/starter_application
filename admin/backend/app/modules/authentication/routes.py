@@ -35,6 +35,7 @@ from app.modules.authentication.schemas import (
 )
 from app.modules.authentication.service import AuthenticationService, mfa_enrollment_needed
 from app.modules.authentication.session_service import IssuedTokens
+from app.modules.permissions.service import PermissionService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 _optional_bearer = HTTPBearer(auto_error=False)
@@ -88,8 +89,13 @@ def logout(
 
 
 @router.get("/me", response_model=CurrentUserResponse)
-def me(principal: Principal = Depends(get_restricted_principal)) -> CurrentUserResponse:
+def me(
+    principal: Principal = Depends(get_restricted_principal), db: Session = Depends(get_db)
+) -> CurrentUserResponse:
     user = principal.user
+    # A restricted session holds no permissions, whatever its roles say.
+    restricted = principal.session.scope != "full" or user.must_change_password
+    permissions = [] if restricted else sorted(PermissionService(db).effective_codes(user))
     return CurrentUserResponse(
         id=user.id,
         email=user.email,
@@ -100,7 +106,7 @@ def me(principal: Principal = Depends(get_restricted_principal)) -> CurrentUserR
         must_change_password=user.must_change_password,
         mfa_enrollment_required=mfa_enrollment_needed(user),
         session_scope=principal.session.scope,
-        permissions=[],
+        permissions=permissions,
     )
 
 

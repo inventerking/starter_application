@@ -143,3 +143,28 @@ def enroll_mfa(client, headers, password=PASSWORD) -> tuple[str, list[str]]:
     body = client.post("/api/v1/auth/mfa/confirm", headers=headers,
                        json={"code": totp_code(secret)}).json()
     return secret, body["recovery_codes"]
+
+
+@pytest.fixture
+def permissions(db):
+    """Synchronize the registry and return a {code: Permission} map."""
+    from app.modules.permissions.repository import PermissionRepository
+    from app.modules.permissions.service import PermissionService
+
+    PermissionService(db).sync_registry()
+    db.commit()
+    return {row.code: row for row in PermissionRepository(db).list_all()}
+
+
+@pytest.fixture
+def grant(db, permissions):
+    """Give an Admin direct ALLOW overrides."""
+    from app.modules.permissions.models import UserPermission
+
+    def _grant(user, *codes):
+        for code in codes:
+            db.add(UserPermission(user_id=user.id, permission_id=permissions[code].id,
+                                  effect="ALLOW"))
+        db.commit()
+
+    return _grant

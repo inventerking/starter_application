@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,12 @@ def register_exception_handlers(app: FastAPI) -> None:
         code = {404: "not_found", 405: "method_not_allowed"}.get(exc.status_code, "http_error")
         message = NotFound.message if exc.status_code == 404 else "The request failed."
         return _error(exc.status_code, code, message)
+
+    @app.exception_handler(IntegrityError)
+    async def _integrity(_: Request, exc: IntegrityError) -> JSONResponse:
+        # A constraint caught a race that the service checks could not see.
+        logger.warning("Integrity error: %s", type(exc.orig).__name__)
+        return _error(409, Conflict.code, Conflict.message)
 
     @app.exception_handler(Exception)
     async def _unhandled(_: Request, exc: Exception) -> JSONResponse:
